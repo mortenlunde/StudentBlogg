@@ -69,5 +69,3 @@ public class Program
         app.MapControllers();
     }
 }
-
-//test

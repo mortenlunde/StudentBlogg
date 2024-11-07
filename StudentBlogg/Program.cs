@@ -9,15 +9,9 @@ public class Program
     public static void Main(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-
-        // Services
         ConfigureServices(builder);
-
         WebApplication app = builder.Build();
-        
-        // Middleware & Pipeline
         ConfigureApp(app);
-
         app.Run();
     }
     
@@ -27,16 +21,15 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerBasicAuthentication();
 
-        // Legg til tjenester for User, Post, og Comment
+        // Database, User, Post, og Comment
         builder.Services.AddUserServices();
         builder.Services.AddPostServices();
         builder.Services.AddCommentServices();
-        
-        // Database konfigurasjon
         builder.Services.AddDatabase(builder.Configuration);
 
-        // Health Checks
-        builder.Services.AddHealthChecks()
+        // Health Check
+        builder.Services
+            .AddHealthChecks()
             .AddCheck<DataBaseHealthCheck>("DataBase");
 
         // Legg til autentisering, unntakshåndtering og validering
@@ -46,9 +39,7 @@ public class Program
 
         // Logging
         builder.Host.UseSerilog((context, configuration) =>
-        {
-            configuration.ReadFrom.Configuration(context.Configuration);
-        });
+        { configuration.ReadFrom.Configuration(context.Configuration); });
     }
 
     private static void ConfigureApp(WebApplication app)
@@ -59,7 +50,8 @@ public class Program
             app.UseSwaggerUI();
         }
 
-        app.UseHealthChecks("/_health")
+        app
+            .UseHealthChecks("/_health")
             .UseMiddleware<DatabaseConnectionMiddleware>()
             .UseExceptionHandler(_ => { }) 
             .UseMiddleware<BasicAuthentication>()

@@ -53,10 +53,10 @@ public class GlobalExceptionHandling(ILogger<GlobalExceptionHandling> logger) : 
 
 // User Exceptions
 public class UsernameAlreadyExistsException(string username)
-    : Exception($"Brukernavnet '{username}' er allerede i bruk.");
+    : Exception($"Username '{username}' already exists.");
 
 public class EmailAlreadyExistsException(string email) 
-    : Exception($"E-posten '{email}' er allerede i bruk.");
+    : Exception($"E-mail '{email}' already exists.");
 
 // Post Exeptions
 public class PostNotFoundException()
@@ -87,7 +87,7 @@ public class DbConnectionException()
     : Exception("Connection error.") { }
     
 public class WrongUserLoggedInException() 
-    : Exception("You can not delete post for another user.") { }
+    : Exception("You can not update or delete something for another user.") { }
     
 public class NotFoundException()
     : Exception("Not found.") { }

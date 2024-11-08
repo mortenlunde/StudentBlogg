@@ -128,18 +128,16 @@ public class UserService(
             throw new UnauthorizedAccessException("User is not authorized.");
         }
         
-        User? loggedInUser = (await userRepository.FindAsync(user => user.Id.ToString() == loggedInUserId)).FirstOrDefault();
-        if (loggedInUser?.Id != id)
+        User? loggedInUser = (await userRepository.FindAsync(user => user.Id == userId)).FirstOrDefault();
+        if (loggedInUser == null)
         {
-            logger.LogWarning("Logged-in user with ID {UserId} not found.", userId);
-            throw new NoUserFoundException("The specified user ID is invalid.");
-        }
-        if (id == Guid.Empty)
-        {
-            throw new NoUserFoundException("The specified user ID is invalid.");
+            logger.LogWarning("User {UserId} not found", loggedInUserId);
+            throw new NoUserFoundException($"{id}");
         }
         
-        User? userToUpdate = userRegistrationMapper.MapToModel(entity);
+        
+        IEnumerable<User> usersToUpdate = await userRepository.FindAsync(user => user.Id == id);
+        User? userToUpdate = usersToUpdate.FirstOrDefault();
         if (userToUpdate is null)
         {
             logger.LogWarning("User with ID {UserId} not found.", userId);
@@ -163,7 +161,7 @@ public class UserService(
         else
         {
             logger.LogWarning("User {UserId} is not authorized to update this profile.", userId);
-            throw new UnauthorizedAccessException("You are not authorized to update this profile.");
+            throw new WrongUserLoggedInException();
         }
     }
 }

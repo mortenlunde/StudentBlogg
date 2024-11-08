@@ -25,7 +25,7 @@ public class Program
         builder.Services.AddUserServices();
         builder.Services.AddPostServices();
         builder.Services.AddCommentServices();
-        builder.Services.AddDatabase(builder.Configuration);
+        builder.Services.AddDatabaseService(builder.Configuration);
 
         // Health Check
         builder.Services

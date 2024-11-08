@@ -13,7 +13,7 @@ public class PostsController(ILogger<PostsController> logger, IPostService postS
     [HttpGet("{id:guid}", Name = "GetPost")]
     public async Task<ActionResult<PostDto>> GetPostAsync(Guid id)
     {
-        var postDto = await _postService.GetByIdAsync(id);
+        PostDto? postDto = await _postService.GetByIdAsync(id);
         if (postDto == null)
             _logger.LogError($"Post with id {id} not found.");
         
@@ -48,7 +48,7 @@ public class PostsController(ILogger<PostsController> logger, IPostService postS
     public async Task<ActionResult<PostDto>> DeletePost(Guid id)
     {
         _logger.LogInformation($"Post with id {id} deleted.");
-        var result = await _postService.DeleteByIdAsync(id);
+        PostDto? result = await _postService.DeleteByIdAsync(id);
         
         return result is null
             ? BadRequest("Failed to delete post.")
@@ -59,7 +59,7 @@ public class PostsController(ILogger<PostsController> logger, IPostService postS
     public async Task<ActionResult<PostDto>> UpdatePost(Guid id, PostDto dto)
     {
         _logger.LogInformation($"Attempting to update post with id {id}.");
-        var result = await _postService.UpdateAsync(id, dto);
+        PostDto? result = await _postService.UpdateAsync(id, dto);
 
         return result is null
             ? BadRequest("Failed to update post.")

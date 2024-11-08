@@ -119,7 +119,7 @@ public class PostService(ILogger<PostService> logger, IMapper<Post, PostDto> map
         }
 
         logger.LogWarning("User {UserId} is not authorized to delete post with Id {PostId}", loggedInUserId, id);
-        return null;
+        throw new WrongUserLoggedInException();
     }
 
 

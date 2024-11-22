@@ -19,7 +19,7 @@ public class Program
     {
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerBasicAuthentication();
+        builder.Services.AddSwaggerJwtAuthentication();
 
         // Database, User, Post, og Comment
         builder.Services.AddUserServices();
@@ -54,7 +54,8 @@ public class Program
             .UseHealthChecks("/_health")
             .UseMiddleware<DatabaseConnectionMiddleware>()
             .UseExceptionHandler(_ => { }) 
-            .UseMiddleware<BasicAuthentication>()
+            .UseAuthentication()
+            //.UseMiddleware<BasicAuthentication>()
             .UseHttpsRedirection()
             .UseAuthorization();
 

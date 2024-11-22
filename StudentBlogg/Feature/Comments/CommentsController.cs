@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentBlogg.Feature.Comments.Interfaces;
 using StudentBlogg.Feature.Posts;
@@ -6,6 +7,7 @@ using StudentBlogg.Feature.Posts.Interfaces;
 namespace StudentBlogg.Feature.Comments;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
 public class CommentsController(ILogger<CommentsController> logger, ICommentService commentService, IPostService postService) : ControllerBase
 {
@@ -13,6 +15,7 @@ public class CommentsController(ILogger<CommentsController> logger, ICommentServ
     private readonly ICommentService _commentService = commentService;
     private readonly IPostService _postService = postService;
 
+    [AllowAnonymous]
     [HttpGet("{postId:guid}/comments", Name = "GetComment")]
     public async Task<ActionResult<CommentDto>> GetComment(Guid postId)
     {

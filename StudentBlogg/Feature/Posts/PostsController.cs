@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentBlogg.Feature.Posts.Interfaces;
 
 namespace StudentBlogg.Feature.Posts;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
 public class PostsController(ILogger<PostsController> logger, IPostService postService) : ControllerBase
 {

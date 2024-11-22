@@ -1,7 +1,10 @@
-﻿using FluentValidation;
+﻿using System.Text;
+using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
+using Microsoft.IdentityModel.Tokens;
+using StudentBlogg.Common;
 using StudentBlogg.Common.Interfaces;
 using StudentBlogg.Configurations;
 using StudentBlogg.Data;
@@ -12,45 +15,38 @@ using StudentBlogg.Feature.Posts.Interfaces;
 using StudentBlogg.Feature.Users;
 using StudentBlogg.Feature.Users.Interfaces;
 using StudentBlogg.Middleware;
-using Swashbuckle.AspNetCore.Filters;
 
 namespace StudentBlogg.Extensions;
 
 public static class ServiceCollectionExtension
 {
-    public static void AddSwaggerBasicAuthentication(this IServiceCollection services)
+    public static void AddSwaggerJwtAuthentication(this IServiceCollection services)
     {
         services.AddSwaggerGen(c =>
         {
-            c.AddSecurityDefinition("basic", new OpenApiSecurityScheme
+            c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
                 Name = "Authorization",
-                Type = SecuritySchemeType.Http,
-                Scheme = "basic",
-                In = ParameterLocation.Header,
-                Description = "Basic Authorization header using the Bearer scheme."
+                Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                Scheme = "Bearer",
+                BearerFormat = "JWT",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                Description = "Enter 'Bearer' [space] and then your valid token in the text input below.\r\n\r\nExample: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'"
             });
-            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
             {
                 {
-                    new OpenApiSecurityScheme
+                    new Microsoft.OpenApi.Models.OpenApiSecurityScheme
                     {
-                        Reference = new OpenApiReference
+                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
                         {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = "basic"
+                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                            Id = "Bearer"
                         }
                     },
                     []
                 }
             });
-            c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
-            {
-                In = ParameterLocation.Header, 
-                Name = "Authorization",
-                Type = SecuritySchemeType.ApiKey
-            });
-            c.OperationFilter<SecurityRequirementsOperationFilter>();
         });
     }
     public static void AddUserServices(this IServiceCollection services)
@@ -79,9 +75,31 @@ public static class ServiceCollectionExtension
 
     public static void ConfigureAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddScoped<BasicAuthentication>();
-        services.Configure<BasicAuthenticationOptions>(configuration.GetSection("BasicAuthenticationOptions"));
+        //test
+        services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
+        JwtOptions? jwtOptions = configuration.GetSection("Jwt").Get<JwtOptions>();
+        
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        }).AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtOptions!.Issuer,
+                ValidAudience = jwtOptions.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key))
+            };
+        });
+        
+        services.AddScoped<ITokenService, TokenService>();
         services.AddHttpContextAccessor();
+
     }
 
     public static void ConfigureExceptionHandler(this IServiceCollection services)

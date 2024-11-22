@@ -95,16 +95,17 @@ public class UserService(
             : mapper.MapToDto(userResponse);
     }
 
-    public async Task<Guid> AuthenticateUserAsync(string username, string password)
+    public async Task<User?> AuthenticateUserAsync(string username, string password)
     {
         Expression<Func<User, bool>> expression = user => user.Username == username;
         User? usr = (await userRepository.FindAsync(expression)).FirstOrDefault();
-        
-        if (usr is null)
-            return Guid.Empty;
+    
+        if (usr is null || !BCrypt.Net.BCrypt.Verify(password, usr.HashedPassword))
+            return null;
 
-        return BCrypt.Net.BCrypt.Verify(password, usr.HashedPassword) ? usr.Id : Guid.Empty;
+        return usr; // Return the entire user object.
     }
+
 
     public async Task<IEnumerable<UserDto>> FindAsync(UserSearchParams searchParams)
     {

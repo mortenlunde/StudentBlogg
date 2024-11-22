@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using StudentBlogg.Common.Interfaces;
 using StudentBlogg.Feature.Posts;
 using StudentBlogg.Feature.Posts.Interfaces;
 using StudentBlogg.Feature.Users.Interfaces;
@@ -6,12 +9,26 @@ using StudentBlogg.Feature.Users.Interfaces;
 namespace StudentBlogg.Feature.Users;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
-public class UsersController(ILogger<UsersController> logger, IUserService userService, IPostService postService) : ControllerBase
+public class UsersController : ControllerBase
 {
-    private readonly ILogger<UsersController> _logger = logger;
-    private readonly IUserService _userService = userService;
-    private readonly IPostService _postService = postService;
+    private readonly ILogger<UsersController> _logger;
+    private readonly IUserService _userService;
+    private readonly IPostService _postService;
+    private readonly ITokenService _tokenService;
+
+    public UsersController(
+        ILogger<UsersController> logger,
+        IUserService userService,
+        IPostService postService,
+        ITokenService tokenService)
+    {
+        _logger = logger;
+        _userService = userService;
+        _postService = postService;
+        _tokenService = tokenService;
+    }
     
     [HttpGet("{id:guid}", Name = "GetUserByIDAsync")]
     public async Task<ActionResult<UserDto>> GetUserByIdAsync(Guid id)
@@ -39,6 +56,7 @@ public class UsersController(ILogger<UsersController> logger, IUserService userS
         return Ok(await _userService.FindAsync(searchParams));
     }
 
+    [AllowAnonymous]
     [HttpPost("Register", Name = "RegisterUserAsync")]
     public async Task<ActionResult<UserDto>> RegisterUserAsync(UserRegistrationDto dto)
     {
@@ -68,6 +86,7 @@ public class UsersController(ILogger<UsersController> logger, IUserService userS
         return Ok(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:guid}/posts", Name = "GetUserPostsAsync")]
     public async Task<ActionResult<IEnumerable<PostDto>>> GetUserPostsAsync(Guid id)
     {
@@ -78,4 +97,24 @@ public class UsersController(ILogger<UsersController> logger, IUserService userS
         
         return Ok(result);
     }
+    
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        User? user = await _userService.AuthenticateUserAsync(request.Email, request.Password);
+        
+        if (user == null)
+            return Unauthorized(new { Message = "Invalid username or password" });
+
+        string token = _tokenService.GenerateToken(user.Id, user.Username);
+        return Ok(new { Token = token });
+    }
+    
+    [HttpGet("protected")]
+    public IActionResult GetProtectedData()
+    {
+        return Ok(new { Message = "You are authorized!" });
+    }
+
 }

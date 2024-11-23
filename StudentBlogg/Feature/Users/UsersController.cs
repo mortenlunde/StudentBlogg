@@ -78,7 +78,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id:guid}", Name = "UpdateUserAsync")]
-    public async Task<ActionResult<UserDto>> UpdateUserAsync(Guid id, UserRegistrationDto dto)
+    public async Task<ActionResult<UserDto>> UpdateUserAsync(Guid id, [FromBody]UserRegistrationDto dto)
     {
         _logger.LogInformation($"Updating user with ID {id} updated");
         UserDto result = await _userService.UpdateRegisterAsync(id, dto);

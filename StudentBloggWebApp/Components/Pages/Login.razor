@@ -1,0 +1,90 @@
+@page "/login"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ProtectedLocalStorage ProtectedBrowserStorage
+
+<h3>Login</h3>
+<hr/>
+<br/>
+<EditForm Model="@this" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="email">Email:</label>
+        <InputText id="email" class="form-control" @bind-Value="_email" />
+    </div>
+
+    <div class="mb-3">
+        <label for="password">Password:</label>
+        <InputText id="password" class="form-control" @bind-Value="_password" type="password" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="error-message">@_errorMessage</div>
+}
+    
+@code {
+    private string? _email;
+    private string? _password;
+    private string? _errorMessage;
+    
+    private async Task HandleLogin()
+    {
+        var loginRequest = new { Email = _email, Password = _password };
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/v1/users/login", loginRequest);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+                if (result != null && !string.IsNullOrEmpty(result.Token))
+                {
+                    Console.WriteLine($"Token from server: {result.Token}");
+                
+                    // Store the token
+                    await ProtectedBrowserStorage.SetAsync("authToken", result.Token);
+
+                    // Retrieve the token immediately after storing to verify
+                    var storedTokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
+                    if (storedTokenResult.Success)
+                    {
+                        Console.WriteLine($"Token stored: {storedTokenResult.Value}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to store the token.");
+                    }
+
+                    Navigation.NavigateTo("/posts");
+                }
+                else
+                {
+                    _errorMessage = "Failed to parse token from server.";
+                }
+            }
+            else
+            {
+                _errorMessage = "Invalid credentials, please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred while logging in: {ex.Message}";
+        }
+    }
+
+
+public class TokenResponse
+    {
+        public string Token { get; set; }
+    }
+}
+

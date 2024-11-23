@@ -1,0 +1,157 @@
+@page "/Profile"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using StudentBlogg.Feature.Users
+@inject HttpClient Http
+@inject ProtectedLocalStorage ProtectedBrowserStorage
+@using System.IdentityModel.Tokens.Jwt
+
+<h3>Profile</h3>
+<hr/>
+<br/>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (_userRegistrationDto != null)
+{
+    <EditForm Model="_userRegistrationDto" OnValidSubmit="SaveChanges">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="Username">Username</label>
+            <InputText id="Username" class="form-control" @bind-Value="_userRegistrationDto.Username" />
+        </div>
+
+        <div class="form-group">
+            <label for="FirstName">First Name</label>
+            <InputText id="FirstName" class="form-control" @bind-Value="_userRegistrationDto.Firstname" />
+        </div>
+
+        <div class="form-group">
+            <label for="LastName">Last Name</label>
+            <InputText id="LastName" class="form-control" @bind-Value="_userRegistrationDto.Lastname" />
+        </div>
+
+        <div class="form-group">
+            <label for="Email">Email</label>
+            <InputText id="Email" class="form-control" @bind-Value="_userRegistrationDto.Email" />
+        </div>
+
+        <!-- Add password fields -->
+        <div class="form-group">
+            <label for="Password">Password</label>
+            <InputText id="Password" type="password" class="form-control" @bind-Value="_userRegistrationDto.Password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </EditForm>
+}
+else
+{
+    <p>No user data available.</p>
+}
+
+@code {
+    private UserRegistrationDto _userRegistrationDto = new UserRegistrationDto();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
+            if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+            {
+                var token = tokenResult.Value;
+
+                // Decode the JWT token to get the user ID
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+
+                if (userIdClaim != null)
+                {
+                    var userId = userIdClaim.Value;
+
+                    // Add the token to the Authorization header
+                    Http.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+                    // Fetch the user data
+                    var response = await Http.GetFromJsonAsync<UserDto>($"api/v1/Users/{userId}");
+
+                    if (response != null)
+                    {
+                        // Map the fetched UserDto to UserRegistrationDto
+                        _userRegistrationDto = new UserRegistrationDto
+                        {
+                            Username = response.Username,
+                            Firstname = response.FirstName,
+                            Lastname = response.LastName,
+                            Email = response.Email
+                        };
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("No data returned from API.");
+                    }
+                }
+                else
+                {
+                    Console.Error.WriteLine("UserId claim not found in token.");
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine("Token not found or invalid.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error fetching user data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        try
+        {
+            var tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
+            if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+            {
+                var token = tokenResult.Value;
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+
+                var userId = Guid.Parse(userIdClaim.Value);
+
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+                var response = await Http.PutAsJsonAsync($"api/v1/Users/{userId}", _userRegistrationDto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("User updated successfully!");
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.Error.WriteLine($"Failed to update user: {errorContent}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error updating user data: {ex.Message}");
+        }
+    }
+
+}

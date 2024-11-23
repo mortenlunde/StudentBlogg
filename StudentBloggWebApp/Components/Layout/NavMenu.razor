@@ -1,0 +1,63 @@
+﻿@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedLocalStorage ProtectedBrowserStorage
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">StudentBloggWebApp</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler"/>
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="posts">
+                <span class="oi oi-signpost" aria-hidden="true"></span> Blogginnlegg
+            </NavLink>
+        </div>
+        <br/><br/>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="register">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Registrer deg
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="login">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Logg inn
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="profile">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Min Profil
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <a class="nav-link" href="#" @onclick="Logout">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Logg ut
+            </a>
+        </div>
+
+    </nav>
+</div>
+
+@code
+{
+    private async Task Logout()
+    {
+        await ProtectedBrowserStorage.DeleteAsync("authToken");
+        Http.DefaultRequestHeaders.Authorization = null; // Clear the Authorization header
+        Navigation.NavigateTo("/login");
+    }
+}

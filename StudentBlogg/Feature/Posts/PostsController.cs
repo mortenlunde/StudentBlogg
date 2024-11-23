@@ -24,6 +24,7 @@ public class PostsController(ILogger<PostsController> logger, IPostService postS
             : Ok(postDto);
     }
 
+    // [AllowAnonymous]
     [HttpGet(Name = "GetPosts")]
     public async Task<ActionResult<IEnumerable<PostDto>>> GetPosts(
         [FromQuery] PostSearchParams searchParams,

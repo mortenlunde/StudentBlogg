@@ -1,0 +1,67 @@
+@page "/posts"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using StudentBlogg.Feature.Posts
+@inject HttpClient Http
+@inject ProtectedLocalStorage ProtectedBrowserStorage
+
+<h3>Blogginnlegg</h3>
+<hr/>
+<br/>
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (posts != null && posts.Any())
+{
+    @foreach (var post in posts)
+    {
+        <h4>@post.Title</h4>
+        <em>Opprettet: @post.DatePosted</em>
+        <p>@post.Content</p>
+    }
+}
+else
+{
+    <p>No posts available or failed to fetch posts.</p>
+}
+
+@code {
+    private IEnumerable<PostDto> posts;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
+            if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+            {
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Value);
+
+                var response = await Http.GetFromJsonAsync<IEnumerable<PostDto>>("api/v1/Posts?page=1&pageSize=10");
+
+                if (response != null)
+                {
+                    posts = response;
+                }
+                else
+                {
+                    Console.Error.WriteLine("No data returned from API.");
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine("Token not found or invalid.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error fetching posts: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

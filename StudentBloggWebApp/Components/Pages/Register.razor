@@ -1,0 +1,72 @@
+@page "/register"
+@using StudentBlogg.Feature.Users
+@inject HttpClient Http
+
+<h1>Registrer deg</h1>
+
+<EditForm Model="@_registration" OnValidSubmit="HandleRegistration">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="username">Brukernavn:</label>
+        <InputText id="username" class="form-control" @bind-Value="_registration.Username" />
+    </div>
+    <div class="mb-3">
+        <label for="firstname">Fornavn:</label>
+        <InputText id="firstname" class="form-control" @bind-Value="_registration.Firstname" />
+    </div>
+    <div class="mb-3">
+        <label for="lastname">Etternavn:</label>
+        <InputText id="lastname" class="form-control" @bind-Value="_registration.Lastname" />
+    </div>
+    <div class="mb-3">
+        <label for="email">E-post:</label>
+        <InputText id="email" class="form-control" @bind-Value="_registration.Email" />
+    </div>
+    <div class="mb-3">
+        <label for="password">Passord:</label>
+        <InputText id="password" class="form-control" @bind-Value="_registration.Password" type="password" />
+    </div>
+    <button type="submit" class="btn btn-primary">Registrer</button>
+</EditForm>
+
+@if (_errorMessage is not null)
+{
+    <p class="text-danger">@_errorMessage</p>
+}
+@if (_successMessage is not null)
+{
+    <p class="text-success">@_successMessage</p>
+}
+
+@code {
+    private UserRegistrationDto _registration = new();
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private async Task HandleRegistration()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/v1/Users/Register", _registration);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _successMessage = "Registrering vellykket! Du kan nå logge inn.";
+                _registration = new UserRegistrationDto(); // Tøm skjemaet
+            }
+            else
+            {
+                _errorMessage = "Feil ved registrering: " + response.ReasonPhrase;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Feil ved registrering: {ex.Message}";
+        }
+    }
+}

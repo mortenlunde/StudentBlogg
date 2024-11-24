@@ -21,34 +21,40 @@
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="posts">
-                <span class="oi oi-signpost" aria-hidden="true"></span> Blogginnlegg
+                <span class="bi bi-postcard-heart-fill" aria-hidden="true"></span> Blogginnlegg
             </NavLink>
         </div>
         <br/><br/>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="register">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Registrer deg
+                <span class="bi bi-person-fill-add" aria-hidden="true"></span> Registrer deg
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="login">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Logg inn
+                <span class="bi bi-people-fill" aria-hidden="true"></span> Logg inn
             </NavLink>
         </div>
 
+        <br/><br/>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="createPost">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Nytt innlegg
+            </NavLink>
+        </div>
+        
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="profile">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Min Profil
+                <span class="bi bi-person-fill" aria-hidden="true"></span> Min Profil
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <a class="nav-link" href="#" @onclick="Logout">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Logg ut
-            </a>
+            <NavLink class="nav-link" href="#" @onclick="Logout">
+                <span class="bi-person-fill-x" aria-hidden="true"></span> Logg ut
+            </NavLink>
         </div>
-
     </nav>
 </div>
 

@@ -33,15 +33,6 @@ else
     </div>
 }
 
-<Modal @ref="_modal" Title="Innlegg opprettet!">
-    <BodyTemplate>
-        Gå til innlegg
-    </BodyTemplate>
-    <FooterTemplate>
-        <button class="btn btn-secondary" @onclick="OnHideModalClick">Lukk</button>
-    </FooterTemplate>
-</Modal>
-
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
     <div class="alert alert-danger">@_errorMessage</div>
@@ -56,12 +47,6 @@ else
     private string _errorMessage = string.Empty;
     private string _successMessage = string.Empty;
     private bool _isSubmitting;
-    private Modal _modal = default!;
-
-    private async Task OnHideModalClick()
-    {
-        await _modal.HideAsync();
-    }
 
     private async Task CreateNewPost()
     {
@@ -98,7 +83,6 @@ else
             if (response.IsSuccessStatusCode)
             {
                 _successMessage = "Post created successfully!";
-                await _modal.ShowAsync();
             }
             else
             {

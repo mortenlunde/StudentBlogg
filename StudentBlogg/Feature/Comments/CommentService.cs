@@ -1,6 +1,11 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq.Expressions;
+using System.Security.Authentication;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 using StudentBlogg.Common.Interfaces;
 using StudentBlogg.Feature.Comments.Interfaces;
+using StudentBlogg.Feature.Posts;
 using StudentBlogg.Feature.Users;
 using StudentBlogg.Feature.Users.Interfaces;
 using StudentBlogg.Middleware;
@@ -117,27 +122,79 @@ public class CommentService(
     }
 
     public async Task<CommentDto?> AddComment(CommentRegDto regDto, Guid postId)
+{
+    Comment comment = commentMapper.MapToModel(regDto);
+    comment.Id = Guid.NewGuid();
+
+    // Extract the Authorization header
+    var authorizationHeader = httpContextAccessor.HttpContext?.Request.Headers["Authorization"].FirstOrDefault();
+    if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))
     {
-        Comment comment = commentMapper.MapToModel(regDto);
-        comment.Id = Guid.NewGuid();
-        if (httpContextAccessor.HttpContext?.Items["UserId"] is string userIdStr && Guid.TryParse(userIdStr, out Guid userId))
+        logger.LogWarning("Missing or invalid Authorization header.");
+        throw new AuthenticationException("Authorization header is required.");
+    }
+
+    var token = authorizationHeader.Substring("Bearer ".Length).Trim();
+
+    try
+    {
+        // Validate and parse the JWT token
+        var handler = new JwtSecurityTokenHandler();
+        var validationParameters = new TokenValidationParameters
         {
-            comment.UserId = userId;
-        }
-        else
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("YourSuperSecretKeyHereIsVeryNice")) // Replace with your actual key
+        };
+
+        handler.ValidateToken(token, validationParameters, out var validatedToken);
+
+        var jwtToken = (JwtSecurityToken)validatedToken;
+        
+        // Look for the "UserId" claim in the token
+        var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId"); // Use "UserId" instead of "sub"
+        if (userIdClaim == null)
         {
-            logger.LogWarning("Invalid or missing UserId in HttpContext.");
-            throw new MissingUsernameOrPasswordException();
+            logger.LogWarning("UserId missing in token.");
+            throw new Exception("Invalid token payload. UserId is missing.");
         }
 
-        comment.DateCommented = DateTime.UtcNow;
-        comment.PostId = postId;
-        
-        Comment? commentResponse = await commentRepository.AddAsync(comment);
-        return commentResponse is null
-            ? null
-            : mapper.MapToDto(commentResponse);
+        // Ensure the user ID is a valid GUID
+        if (!Guid.TryParse(userIdClaim.Value, out Guid userId))
+        {
+            logger.LogWarning("Invalid UserId in token.");
+            throw new Exception("Invalid token payload. UserId is not a valid GUID.");
+        }
+
+        // Assign the user ID to the comment
+        comment.UserId = userId;
     }
+    catch (SecurityTokenException ex)
+    {
+        logger.LogError(ex, "Token validation failed.");
+        throw new Exception("Token validation failed. Please ensure the token is valid.", ex);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error parsing or validating token.");
+        throw new Exception("Failed to parse or validate token.", ex);
+    }
+
+    // Set other comment properties
+    comment.DateCommented = DateTime.UtcNow;
+    comment.PostId = postId;
+
+    // Save the comment in the repository
+    Comment? commentResponse = await commentRepository.AddAsync(comment);
+
+    return commentResponse is null
+        ? null
+        : mapper.MapToDto(commentResponse);
+}
+
+
 
     public async Task<IEnumerable<CommentDto>> FindAsync(CommentSearchParams searchParams)
     {
@@ -148,4 +205,5 @@ public class CommentService(
 
         return comments.Select(mapper.MapToDto);
     }
+    
 }

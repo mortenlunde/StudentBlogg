@@ -171,7 +171,6 @@ public class PostService(ILogger<PostService> logger, IMapper<Post, PostDto> map
             : mapper.MapToDto(postResponse);
     }
 
-
     public async Task<IEnumerable<PostDto>> FindAsync(PostSearchParams searchParams)
     {
         Expression<Func<Post, bool>> predicate = post =>

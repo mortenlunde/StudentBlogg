@@ -2,8 +2,9 @@
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @using StudentBlogg.Feature.Users
 @inject HttpClient Http
-@inject ProtectedLocalStorage ProtectedBrowserStorage
+@inject ProtectedLocalStorage ProtectedLocalStorage
 @using System.IdentityModel.Tokens.Jwt
+@inject NavigationManager NavigationManager
 
 <h1>Profil</h1>
 <hr/>
@@ -20,42 +21,37 @@
 else if (_userRegistrationDto != null)
 {
     <div style="width: 100%; max-width: 33%">
-    <NavLink href="/createpost" class="btn btn-primary">Opprett nytt innlegg</NavLink>
-    <br/><br/>
-    <EditForm Model="_userRegistrationDto" OnValidSubmit="SaveChanges">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+        <NavLink href="/createpost" class="btn btn-primary">Opprett nytt innlegg</NavLink>
+        <br /><br />
+        <EditForm Model="_userRegistrationDto" OnValidSubmit="SaveChanges">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
 
-        <div class="form-group">
-            <label for="Username">Brukernavn</label>
-            <InputText id="Username" class="form-control" @bind-Value="_userRegistrationDto.Username" />
-        </div>
+            <div class="form-group">
+                <label for="Username">Brukernavn</label>
+                <InputText id="Username" class="form-control" disabled="true" @bind-Value="_userRegistrationDto.Username" />
+            </div>
 
-        <div class="form-group">
-            <label for="FirstName">Fornavn</label>
-            <InputText id="FirstName" class="form-control" @bind-Value="_userRegistrationDto.Firstname" />
-        </div>
+            <div class="form-group">
+                <label for="FirstName">Fornavn</label>
+                <InputText id="FirstName" class="form-control" @bind-Value="_userRegistrationDto.Firstname" />
+            </div>
 
-        <div class="form-group">
-            <label for="LastName">Etternavn</label>
-            <InputText id="LastName" class="form-control" @bind-Value="_userRegistrationDto.Lastname" />
-        </div>
+            <div class="form-group">
+                <label for="LastName">Etternavn</label>
+                <InputText id="LastName" class="form-control" @bind-Value="_userRegistrationDto.Lastname" />
+            </div>
 
-        <div class="form-group">
-            <label for="Email">Email</label>
-            <InputText id="Email" class="form-control" @bind-Value="_userRegistrationDto.Email" />
-        </div>
+            <div class="form-group">
+                <label for="Email">Email</label>
+                <InputText id="Email" class="form-control" @bind-Value="_userRegistrationDto.Email" />
+            </div>
+            <br />
 
-        <!-- Add password fields -->
-        <div class="form-group">
-            <label for="Password">Passord</label>
-            <InputText id="Password" type="password" class="form-control" @bind-Value="_userRegistrationDto.Password" />
-            <small class="form-text text-muted">La være blank for å beholde eksisterende.</small>
-        </div><br/>
-
-
-        <button type="submit" class="btn btn-primary">Lagre endringer</button>
-    </EditForm>
+            <button type="submit" class="btn btn-primary" disabled="@_isSaving">Lagre endringer</button>
+            <NavLink href="/changepassword" class="btn btn-secondary" style="margin-left: 10px">Endre passord</NavLink>
+            <button class="btn btn-danger" @onclick="OpenDeleteModal">Slett bruker</button>
+        </EditForm>
     </div>
 }
 else
@@ -63,64 +59,80 @@ else
     <p>No user data available.</p>
 }
 
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <div class="alert alert-success">@_successMessage</div>
+}
+
+@if (_showDeleteModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bekreft sletting</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseDeleteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Er du sikker på at du vil slette brukeren? Dette kan ikke angres.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseDeleteModal">Avbryt</button>
+                    <button class="btn btn-danger" @onclick="DeleteUserAsync">Slett</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
-    private UserRegistrationDto _userRegistrationDto = new UserRegistrationDto();
+    private UserRegistrationDto _userRegistrationDto = new();
     private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _showDeleteModal;
+    private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
-            if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+            var token = await GetAuthTokenAsync();
+            if (string.IsNullOrEmpty(token))
             {
-                string? token = tokenResult.Value;
-
-                // Decode the JWT token to get the user ID
-                var handler = new JwtSecurityTokenHandler();
-                var jwtToken = handler.ReadJwtToken(token);
-                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
-
-                if (userIdClaim != null)
-                {
-                    var userId = userIdClaim.Value;
-
-                    // Add the token to the Authorization header
-                    Http.DefaultRequestHeaders.Authorization =
-                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-                    // Fetch the user data
-                    var response = await Http.GetFromJsonAsync<UserDto>($"api/v1/Users/{userId}");
-
-                    if (response != null)
-                    {
-                        // Map the fetched UserDto to UserRegistrationDto
-                        _userRegistrationDto = new UserRegistrationDto
-                        {
-                            Username = response.Username,
-                            Firstname = response.FirstName,
-                            Lastname = response.LastName,
-                            Email = response.Email
-                        };
-                    }
-                    else
-                    {
-                        await Console.Error.WriteLineAsync("No data returned from API.");
-                    }
-                }
-                else
-                {
-                    await Console.Error.WriteLineAsync("UserId claim not found in token.");
-                }
+                _errorMessage = "Ingen token funnet. Vennligst logg inn.";
+                return;
             }
-            else
+
+            var userId = GetUserIdFromToken(token);
+            if (userId == Guid.Empty)
             {
-                await Console.Error.WriteLineAsync("Token not found or invalid.");
+                _errorMessage = "Token er ugyldig.";
+                return;
+            }
+
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.GetFromJsonAsync<UserDto>($"api/v1/Users/{userId}");
+            if (response != null)
+            {
+                _userRegistrationDto = new UserRegistrationDto
+                {
+                    Username = response.Username,
+                    Firstname = response.FirstName,
+                    Lastname = response.LastName,
+                    Email = response.Email
+                };
             }
         }
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync($"Error fetching user data: {ex.Message}");
+            _errorMessage = $"Klarte ikke å laste brukerdata: {ex.Message}";
         }
         finally
         {
@@ -132,36 +144,96 @@ else
     {
         try
         {
-            var tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
-            if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+            _isSaving = true;
+            var token = await GetAuthTokenAsync();
+            if (string.IsNullOrEmpty(token))
             {
-                var token = tokenResult.Value;
-                var handler = new JwtSecurityTokenHandler();
-                var jwtToken = handler.ReadJwtToken(token);
-                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+                _errorMessage = "Ingen token funnet. Vennligst logg inn.";
+                return;
+            }
 
-                var userId = Guid.Parse(userIdClaim!.Value);
+            var userId = GetUserIdFromToken(token);
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-                Http.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-                var response = await Http.PutAsJsonAsync($"api/v1/Users/{userId}", _userRegistrationDto);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine("User updated successfully!");
-                }
-                else
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    await Console.Error.WriteLineAsync($"Failed to update user: {errorContent}");
-                }
+            var response = await Http.PutAsJsonAsync($"api/v1/Users/{userId}", _userRegistrationDto);
+            if (response.IsSuccessStatusCode)
+            {
+                _successMessage = "Endringene ble lagret.";
+            }
+            else
+            {
+                _errorMessage = $"Klarte ikke å lagre endringene: {await response.Content.ReadAsStringAsync()}";
             }
         }
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync($"Error updating user data: {ex.Message}");
+            _errorMessage = $"En feil oppstod under lagring: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
         }
     }
 
+    private async Task<string?> GetAuthTokenAsync()
+    {
+        var result = await ProtectedLocalStorage.GetAsync<string>("authToken");
+        return result.Success ? result.Value : null;
+    }
+
+    private Guid GetUserIdFromToken(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+        var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+        return userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId) ? userId : Guid.Empty;
+    }
+    
+    private void OpenDeleteModal()
+    {
+        _showDeleteModal = true;
+    }
+
+    private void CloseDeleteModal()
+    {
+        _showDeleteModal = false;
+    }
+
+    private async Task DeleteUserAsync()
+    {
+        try
+        {
+            var token = await GetAuthTokenAsync();
+            if (string.IsNullOrEmpty(token))
+            {
+                _errorMessage = "Ingen token funnet. Vennligst logg inn.";
+                return;
+            }
+
+            var userId = GetUserIdFromToken(token);
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.DeleteAsync($"api/v1/Users/{userId}");
+            if (response.IsSuccessStatusCode)
+            {
+                _successMessage = "Brukeren ble slettet.";
+                _userRegistrationDto = null; // Clear user data.
+                _showDeleteModal = false;
+                
+                await ProtectedLocalStorage.DeleteAsync("authToken");
+
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = $"Klarte ikke å slette brukeren: {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"En feil oppstod under sletting: {ex.Message}";
+        }
+    }
 }

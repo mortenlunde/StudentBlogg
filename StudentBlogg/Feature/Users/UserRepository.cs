@@ -64,17 +64,28 @@ public class UserRepository(ILogger<UserRepository> logger, StudentBloggDbContex
     {
         var user = await dbContext.Users.FindAsync(id);
         if (user == null) return null;
-        
-        user.Username = entity.Username;
-        user.Email = entity.Email;
-        user.FirstName = entity.FirstName;
-        user.LastName = entity.LastName;
-        user.HashedPassword = entity.HashedPassword;
+
+        if (!string.IsNullOrWhiteSpace(entity.Username))
+            user.Username = entity.Username;
+
+        if (!string.IsNullOrWhiteSpace(entity.Email))
+            user.Email = entity.Email;
+
+        if (!string.IsNullOrWhiteSpace(entity.FirstName))
+            user.FirstName = entity.FirstName;
+
+        if (!string.IsNullOrWhiteSpace(entity.LastName))
+            user.LastName = entity.LastName;
+
+        if (!string.IsNullOrWhiteSpace(entity.HashedPassword))
+            user.HashedPassword = entity.HashedPassword;
+
         user.Updated = entity.Updated;
-        
+
         await dbContext.SaveChangesAsync();
         return user;
     }
+
 
     public async Task<User?> DeleteByIdAsync(Guid id)
     {

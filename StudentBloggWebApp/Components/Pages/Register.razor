@@ -1,6 +1,10 @@
 @page "/register"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @using StudentBlogg.Feature.Users
 @inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject ProtectedLocalStorage ProtectedLocalStorage
+
 
     <div style="width: 100%; max-width: 33%;">
             <h1>Registrer deg</h1>
@@ -64,48 +68,73 @@
     private string? ConfirmPassword { get; set; }
 
     private async Task HandleRegistration()
+{
+    _errorMessage = null;
+    _successMessage = null;
+
+    // Check if passwords match
+    if (_registration.Password != ConfirmPassword)
     {
-        _errorMessage = null;
-        _successMessage = null;
+        _errorMessage = "Passordene stemmer ikke overens.";
+        return;
+    }
 
-        // Check if passwords match
-        if (_registration.Password != ConfirmPassword)
+    try
+    {
+        // Register the user
+        var response = await Http.PostAsJsonAsync("api/v1/Users/Register", _registration);
+
+        if (response.IsSuccessStatusCode)
         {
-            _errorMessage = "Passordene stemmer ikke overens.";
-            return;
-        }
+            _successMessage = "Registrering vellykket! Du blir nå logget inn.";
+            ConfirmPassword = null; // Clear the confirm password field
 
-        try
-        {
-            var response = await Http.PostAsJsonAsync("api/v1/Users/Register", _registration);
-
-            if (response.IsSuccessStatusCode)
+            // Attempt to log in immediately after registration
+            var loginDto = new UserLoginDto
             {
-                _successMessage = "Registrering vellykket! Du kan nå logge inn.";
-                _registration = new UserRegistrationDto(); // Tøm skjemaet
-                ConfirmPassword = null; // Tøm bekreft passord feltet
+                Username = _registration.Username,
+                Password = _registration.Password
+            };
+
+            var loginResponse = await Http.PostAsJsonAsync("api/v1/Users/login", loginDto);
+
+            if (loginResponse.IsSuccessStatusCode)
+            {
+                var token = await loginResponse.Content.ReadAsStringAsync();
+
+                // Store the token in ProtectedLocalStorage or cookies
+                await ProtectedLocalStorage.SetAsync("authToken", token);
+
+                // Redirect to profile or home page after successful login
+                NavigationManager.NavigateTo("/profile");
             }
             else
             {
-                var errorResponse = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>();
-
-                // Sett sammen feilene i et mer lesbart format
-                var errorDetails = errorResponse?.Errors.SelectMany(e => e.Value).ToList();
-                if (errorDetails?.Any() == true)
-                {
-                    _errorMessage = string.Join("<br/>", errorDetails);
-                }
-                else
-                {
-                    _errorMessage = "Feil ved registrering, vennligst prøv igjen.";
-                }
+                _errorMessage = "Feil ved automatisk innlogging, vennligst logg inn manuelt.";
             }
         }
-        catch (Exception ex)
+        else
         {
-            _errorMessage = $"Feil ved registrering: {ex.Message}";
+            var errorResponse = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>();
+
+            // Join errors into a readable format
+            var errorDetails = errorResponse?.Errors.SelectMany(e => e.Value).ToList();
+            if (errorDetails?.Any() == true)
+            {
+                _errorMessage = string.Join("<br/>", errorDetails);
+            }
+            else
+            {
+                _errorMessage = "Feil ved registrering, vennligst prøv igjen.";
+            }
         }
     }
+    catch (Exception ex)
+    {
+        _errorMessage = $"Feil ved registrering: {ex.Message}";
+    }
+}
+
     
     public class ValidationErrorResponse
     {

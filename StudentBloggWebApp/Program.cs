@@ -9,6 +9,7 @@ builder.Services.AddScoped<ProtectedLocalStorage>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddBlazorBootstrap();
 
 var app = builder.Build();
 

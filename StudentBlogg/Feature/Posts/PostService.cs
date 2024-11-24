@@ -127,24 +127,50 @@ public class PostService(ILogger<PostService> logger, IMapper<Post, PostDto> map
     {
         Post post = mapperReg.MapToModel(postDto);
         post.Id = Guid.NewGuid();
-    
-        if (httpContextAccessor.HttpContext?.Items["UserId"] is string userIdString && Guid.TryParse(userIdString, out Guid userIdGuid))
+
+        // Extract JWT token from the Authorization header
+        var authorizationHeader = httpContextAccessor.HttpContext?.Request.Headers["Authorization"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))
         {
+            logger.LogWarning("Authorization header is missing or invalid.");
+            throw new InvalidOperationException("Authorization header is missing or invalid.");
+        }
+
+        var token = authorizationHeader.Substring("Bearer ".Length).Trim();
+
+        try
+        {
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+
+            // Extract the UserId claim
+            var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId" || c.Type == "id");
+
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userIdGuid))
+            {
+                logger.LogWarning("UserId is missing or not a valid GUID in the token.");
+                throw new InvalidOperationException("UserId is missing or not a valid GUID in the token.");
+            }
+
             post.UserId = userIdGuid;
         }
-        else
+        catch (Exception ex)
         {
-            throw new InvalidOperationException("UserId is not set or is not in a valid format.");
+            logger.LogError(ex, "Failed to parse JWT token and extract UserId.");
+            throw new InvalidOperationException("Failed to extract UserId from token.", ex);
         }
 
         post.DatePosted = DateTime.UtcNow;
-    
+
+        // Save post to the repository
         Post? postResponse = await postRepository.AddAsync(post);
-    
-        return (postResponse is null 
-            ? null 
-            : mapper.MapToDto(postResponse))!;
+
+        return postResponse is null 
+            ? throw new InvalidOperationException("Failed to save post.") 
+            : mapper.MapToDto(postResponse);
     }
+
 
     public async Task<IEnumerable<PostDto>> FindAsync(PostSearchParams searchParams)
     {

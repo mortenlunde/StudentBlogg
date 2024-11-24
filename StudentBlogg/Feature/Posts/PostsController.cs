@@ -41,7 +41,7 @@ public class PostsController(ILogger<PostsController> logger, IPostService postS
     }
 
     [HttpPost("Post", Name = "CreatePost")]
-    public async Task<ActionResult<PostDto>> CreatePost(PostRegDto dto)
+    public async Task<ActionResult<PostDto>> CreatePost([FromBody]PostRegDto dto)
     {
         PostDto post = await _postService.CreatePostAsync(dto);
         return Ok(post);
@@ -59,7 +59,7 @@ public class PostsController(ILogger<PostsController> logger, IPostService postS
     }
 
     [HttpPut("{id:guid}", Name = "UpdatePost")]
-    public async Task<ActionResult<PostDto>> UpdatePost(Guid id, PostDto dto)
+    public async Task<ActionResult<PostDto>> UpdatePost(Guid id, [FromBody]PostDto dto)
     {
         _logger.LogInformation($"Attempting to update post with id {id}.");
         PostDto? result = await _postService.UpdateAsync(id, dto);

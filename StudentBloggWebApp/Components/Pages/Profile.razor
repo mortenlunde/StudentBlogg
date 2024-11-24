@@ -5,32 +5,39 @@
 @inject ProtectedLocalStorage ProtectedBrowserStorage
 @using System.IdentityModel.Tokens.Jwt
 
-<h3>Profile</h3>
+<h1>Profil</h1>
 <hr/>
 <br/>
 
-@if (isLoading)
+@if (_isLoading)
 {
-    <p>Loading...</p>
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
 }
 else if (_userRegistrationDto != null)
 {
+    <div style="width: 100%; max-width: 33%">
+    <NavLink href="/createpost" class="btn btn-primary">Opprett nytt innlegg</NavLink>
+    <br/><br/>
     <EditForm Model="_userRegistrationDto" OnValidSubmit="SaveChanges">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
         <div class="form-group">
-            <label for="Username">Username</label>
+            <label for="Username">Brukernavn</label>
             <InputText id="Username" class="form-control" @bind-Value="_userRegistrationDto.Username" />
         </div>
 
         <div class="form-group">
-            <label for="FirstName">First Name</label>
+            <label for="FirstName">Fornavn</label>
             <InputText id="FirstName" class="form-control" @bind-Value="_userRegistrationDto.Firstname" />
         </div>
 
         <div class="form-group">
-            <label for="LastName">Last Name</label>
+            <label for="LastName">Etternavn</label>
             <InputText id="LastName" class="form-control" @bind-Value="_userRegistrationDto.Lastname" />
         </div>
 
@@ -41,12 +48,15 @@ else if (_userRegistrationDto != null)
 
         <!-- Add password fields -->
         <div class="form-group">
-            <label for="Password">Password</label>
+            <label for="Password">Passord</label>
             <InputText id="Password" type="password" class="form-control" @bind-Value="_userRegistrationDto.Password" />
-        </div>
+            <small class="form-text text-muted">La være blank for å beholde eksisterende.</small>
+        </div><br/>
 
-        <button type="submit" class="btn btn-primary">Save Changes</button>
+
+        <button type="submit" class="btn btn-primary">Lagre endringer</button>
     </EditForm>
+    </div>
 }
 else
 {
@@ -55,7 +65,7 @@ else
 
 @code {
     private UserRegistrationDto _userRegistrationDto = new UserRegistrationDto();
-    private bool isLoading = true;
+    private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,7 +74,7 @@ else
             var tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
             if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
             {
-                var token = tokenResult.Value;
+                string? token = tokenResult.Value;
 
                 // Decode the JWT token to get the user ID
                 var handler = new JwtSecurityTokenHandler();
@@ -95,26 +105,26 @@ else
                     }
                     else
                     {
-                        Console.Error.WriteLine("No data returned from API.");
+                        await Console.Error.WriteLineAsync("No data returned from API.");
                     }
                 }
                 else
                 {
-                    Console.Error.WriteLine("UserId claim not found in token.");
+                    await Console.Error.WriteLineAsync("UserId claim not found in token.");
                 }
             }
             else
             {
-                Console.Error.WriteLine("Token not found or invalid.");
+                await Console.Error.WriteLineAsync("Token not found or invalid.");
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error fetching user data: {ex.Message}");
+            await Console.Error.WriteLineAsync($"Error fetching user data: {ex.Message}");
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 
@@ -130,7 +140,7 @@ else
                 var jwtToken = handler.ReadJwtToken(token);
                 var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
 
-                var userId = Guid.Parse(userIdClaim.Value);
+                var userId = Guid.Parse(userIdClaim!.Value);
 
                 Http.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
@@ -144,13 +154,13 @@ else
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.Error.WriteLine($"Failed to update user: {errorContent}");
+                    await Console.Error.WriteLineAsync($"Failed to update user: {errorContent}");
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error updating user data: {ex.Message}");
+            await Console.Error.WriteLineAsync($"Error updating user data: {ex.Message}");
         }
     }
 

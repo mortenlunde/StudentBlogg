@@ -2,53 +2,78 @@
 @using StudentBlogg.Feature.Users
 @inject HttpClient Http
 
-<h1>Registrer deg</h1>
+    <div style="width: 100%; max-width: 33%;">
+            <h1>Registrer deg</h1>
+            <hr/><br/>
+            <EditForm Model="@_registration" OnValidSubmit="HandleRegistration">
+                <DataAnnotationsValidator/>
+                <ValidationSummary/>
 
-<EditForm Model="@_registration" OnValidSubmit="HandleRegistration">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+                <div class="mb-3">
+                    <label for="username">Brukernavn:</label>
+                    <InputText id="username" class="form-control" @bind-Value="_registration.Username"/>
+                </div>
+                <div class="mb-3">
+                    <label for="firstname">Fornavn:</label>
+                    <InputText id="firstname" class="form-control" @bind-Value="_registration.Firstname"/>
+                </div>
+                <div class="mb-3">
+                    <label for="lastname">Etternavn:</label>
+                    <InputText id="lastname" class="form-control" @bind-Value="_registration.Lastname"/>
+                </div>
+                <div class="mb-3">
+                    <label for="email">E-post:</label>
+                    <InputText id="email" class="form-control" @bind-Value="_registration.Email"/>
+                </div>
+                <div class="mb-3">
+                    <label for="password">Passord:</label>
+                    <InputText id="password" class="form-control" @bind-Value="_registration.Password" type="password"/>
+                </div>
+                <div class="mb-3">
+                    <label for="confirmPassword">Bekreft passord:</label>
+                    <InputText id="confirmPassword" class="form-control" @bind-Value="ConfirmPassword" type="password"/>
+                </div>
 
-    <div class="mb-3">
-        <label for="username">Brukernavn:</label>
-        <InputText id="username" class="form-control" @bind-Value="_registration.Username" />
-    </div>
-    <div class="mb-3">
-        <label for="firstname">Fornavn:</label>
-        <InputText id="firstname" class="form-control" @bind-Value="_registration.Firstname" />
-    </div>
-    <div class="mb-3">
-        <label for="lastname">Etternavn:</label>
-        <InputText id="lastname" class="form-control" @bind-Value="_registration.Lastname" />
-    </div>
-    <div class="mb-3">
-        <label for="email">E-post:</label>
-        <InputText id="email" class="form-control" @bind-Value="_registration.Email" />
-    </div>
-    <div class="mb-3">
-        <label for="password">Passord:</label>
-        <InputText id="password" class="form-control" @bind-Value="_registration.Password" type="password" />
-    </div>
-    <button type="submit" class="btn btn-primary">Registrer</button>
-</EditForm>
+                <button type="submit" class="btn btn-primary">Registrer</button>
+            </EditForm>
 
-@if (_errorMessage is not null)
-{
-    <p class="text-danger">@_errorMessage</p>
-}
-@if (_successMessage is not null)
-{
-    <p class="text-success">@_successMessage</p>
-}
+            @if (_errorMessage is not null)
+            {
+                <div class="text-danger">
+                    @((MarkupString)_errorMessage)
+                </div>
+            }
+            @if (_successMessage is not null)
+            {
+                <p class="text-success">@_successMessage</p>
+            }
+
+            <h3>Passordkrav:</h3>
+            <ul>
+                <li>Minst 8 tegn</li>
+                <li>En stor bokstav</li>
+                <li>En liten bokstav</li>
+                <li>Minst ett tall</li>
+            </ul>
+    </div>
 
 @code {
     private UserRegistrationDto _registration = new();
     private string? _errorMessage;
     private string? _successMessage;
+    private string? ConfirmPassword { get; set; }
 
     private async Task HandleRegistration()
     {
         _errorMessage = null;
         _successMessage = null;
+
+        // Check if passwords match
+        if (_registration.Password != ConfirmPassword)
+        {
+            _errorMessage = "Passordene stemmer ikke overens.";
+            return;
+        }
 
         try
         {
@@ -58,10 +83,22 @@
             {
                 _successMessage = "Registrering vellykket! Du kan nå logge inn.";
                 _registration = new UserRegistrationDto(); // Tøm skjemaet
+                ConfirmPassword = null; // Tøm bekreft passord feltet
             }
             else
             {
-                _errorMessage = "Feil ved registrering: " + response.ReasonPhrase;
+                var errorResponse = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>();
+
+                // Sett sammen feilene i et mer lesbart format
+                var errorDetails = errorResponse?.Errors.SelectMany(e => e.Value).ToList();
+                if (errorDetails?.Any() == true)
+                {
+                    _errorMessage = string.Join("<br/>", errorDetails);
+                }
+                else
+                {
+                    _errorMessage = "Feil ved registrering, vennligst prøv igjen.";
+                }
             }
         }
         catch (Exception ex)
@@ -69,4 +106,10 @@
             _errorMessage = $"Feil ved registrering: {ex.Message}";
         }
     }
+    
+    public class ValidationErrorResponse
+    {
+        public Dictionary<string, List<string>> Errors { get; set; } = new();
+    }
+
 }

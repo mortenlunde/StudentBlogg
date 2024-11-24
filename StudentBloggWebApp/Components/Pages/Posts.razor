@@ -4,64 +4,69 @@
 @inject HttpClient Http
 @inject ProtectedLocalStorage ProtectedBrowserStorage
 
-<h3>Blogginnlegg</h3>
+<h1>Blogginnlegg</h1>
 <hr/>
 <br/>
-@if (isLoading)
+@if (_isLoading)
 {
-    <p>Loading...</p>
+    <p>Laster...</p>
 }
-else if (posts != null && posts.Any())
+else if (_posts != null && _posts.Any())
 {
-    @foreach (var post in posts)
+    @foreach (var post in _posts)
     {
         <h4>@post.Title</h4>
         <em>Opprettet: @post.DatePosted</em>
         <p>@post.Content</p>
     }
 }
+else if (_tokenResult.Success)
+{
+    <p>Du er ikke innlogget. Du må være logget inn for å se innlegg!</p>
+}
 else
 {
-    <p>No posts available or failed to fetch posts.</p>
+    <p>Ingen innlegg finnes, eller feilet innhenting.</p>
 }
 
 @code {
-    private IEnumerable<PostDto> posts;
-    private bool isLoading = true;
+    private IEnumerable<PostDto>? _posts;
+    private bool _isLoading = true;
+    private ProtectedBrowserStorageResult<string> _tokenResult;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
-            if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+            _tokenResult = await ProtectedBrowserStorage.GetAsync<string>("authToken");
+            if (_tokenResult.Success && !string.IsNullOrEmpty(_tokenResult.Value))
             {
                 Http.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Value);
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _tokenResult.Value);
 
                 var response = await Http.GetFromJsonAsync<IEnumerable<PostDto>>("api/v1/Posts?page=1&pageSize=10");
 
                 if (response != null)
                 {
-                    posts = response;
+                    _posts = response;
                 }
                 else
                 {
-                    Console.Error.WriteLine("No data returned from API.");
+                    await Console.Error.WriteLineAsync("No data returned from API.");
                 }
             }
             else
             {
-                Console.Error.WriteLine("Token not found or invalid.");
+                await Console.Error.WriteLineAsync("Token not found or invalid.");
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error fetching posts: {ex.Message}");
+            await Console.Error.WriteLineAsync($"Error fetching posts: {ex.Message}");
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 }

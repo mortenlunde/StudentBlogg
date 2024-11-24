@@ -4,36 +4,38 @@
 @inject NavigationManager Navigation
 @inject ProtectedLocalStorage ProtectedBrowserStorage
 
-<h3>Login</h3>
-<hr/>
-<br/>
-<EditForm Model="@this" OnValidSubmit="HandleLogin">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<div style="width: 100%; max-width: 33%;">
+        <h1>Logg inn</h1>
+        <hr />
+        <br />
+        <EditForm Model="@this" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
 
-    <div class="mb-3">
-        <label for="email">Email:</label>
-        <InputText id="email" class="form-control" @bind-Value="_email" />
-    </div>
+            <div class="mb-3">
+                <label for="email">Brukernavn:</label>
+                <InputText id="email" class="form-control" @bind-Value="_email" />
+            </div>
 
-    <div class="mb-3">
-        <label for="password">Password:</label>
-        <InputText id="password" class="form-control" @bind-Value="_password" type="password" />
-    </div>
+            <div class="mb-3">
+                <label for="password">Passord:</label>
+                <InputText id="password" class="form-control" @bind-Value="_password" type="password" />
+            </div>
 
-    <button type="submit" class="btn btn-primary">Login</button>
-</EditForm>
+            <button type="submit" class="btn btn-primary">Logg inn</button>
+        </EditForm>
+</div>
 
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
     <div class="error-message">@_errorMessage</div>
 }
-    
+
 @code {
     private string? _email;
     private string? _password;
     private string? _errorMessage;
-    
+
     private async Task HandleLogin()
     {
         var loginRequest = new { Email = _email, Password = _password };
@@ -48,7 +50,7 @@
                 if (result != null && !string.IsNullOrEmpty(result.Token))
                 {
                     Console.WriteLine($"Token from server: {result.Token}");
-                
+
                     // Store the token
                     await ProtectedBrowserStorage.SetAsync("authToken", result.Token);
 
@@ -81,10 +83,8 @@
         }
     }
 
-
-public class TokenResponse
+    public class TokenResponse
     {
         public string Token { get; set; }
     }
 }
-

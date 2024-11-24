@@ -15,12 +15,17 @@ else if (_posts != null && _posts.Any())
 {
     @foreach (var post in _posts)
     {
-        <h4>
-            <NavLink href="@($"/post/{post.Id}")">@post.Title</NavLink>
-        </h4>
-        <em>Opprettet: @post.DatePosted</em>
-        <p>@post.Content</p>
-        <p><span class="bi bi-chat-left-text" style="font-size: 20px;"></span> 0 kommentarer</p>
+        <div>
+            <Card Style="flex: content;">
+                <CardBody>
+                    <CardTitle>@post.Title</CardTitle>
+                    <em>Opprettet: @post.DatePosted</em>
+                    <CardText>@post.Content</CardText>
+                    <Button Color="ButtonColor.Primary" To="@($"post/{post.Id}")" Type="ButtonType.Link">Les mer</Button>
+                    <span class="bi bi-chat-left-text" style="font-size: 20px;"></span> x kommentarer
+                </CardBody>
+            </Card>
+        </div>
     }
 }
 else if (_tokenResult.Success)

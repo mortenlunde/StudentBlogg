@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject ProtectedLocalStorage ProtectedBrowserStorage
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject ProtectedLocalStorage ProtectedLocalStorage
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -9,61 +9,100 @@
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler"/>
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Hjem
             </NavLink>
         </div>
+
+        @if (_tokenResult.Success)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="createPost">
+                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Nytt innlegg
+                </NavLink>
+            </div>
+        }
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="posts">
-                <span class="bi bi-postcard-heart-fill" aria-hidden="true"></span> Blogginnlegg
+                <span class="bi bi-postcard-heart-fill fs-4" aria-hidden="true"></span> Blogginnlegg
             </NavLink>
         </div>
+
+        @if (_tokenResult.Success)
+        {
+            <!-- User/Profile dropdown (visible when logged in) -->
+            <div class="nav-item px-3 dropdown">
+                <a class="nav-link dropdown-toggle" href="javascript:void(0);" @onclick="ToggleDropdown">
+                    <span class="bi bi-person-fill fs-4" aria-hidden="true"></span> Profil
+                </a>
+
+                @if (isDropdownOpen)
+                {
+                    <ul class="dropdown-menu show" aria-labelledby="navbarDropdown">
+                        <li>
+                            <NavLink class="dropdown-item" href="profile">
+                                <span class="bi bi-person-fill fs-4" aria-hidden="true"></span> Min Profil
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink class="dropdown-item" href="#" @onclick="Logout">
+                                <span class="bi bi-person-fill-x fs-4" aria-hidden="true"></span> Logg ut
+                            </NavLink>
+                        </li>
+                    </ul>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Login/Register options (visible when logged out) -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login">
+                    <span class="bi bi-people-fill fs-4" aria-hidden="true"></span> Logg inn
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="register">
+                    <span class="bi bi-person-fill-add fs-4" aria-hidden="true"></span> Registrer deg
+                </NavLink>
+            </div>
+        }
+
         <br/><br/>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="register">
-                <span class="bi bi-person-fill-add" aria-hidden="true"></span> Registrer deg
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="login">
-                <span class="bi bi-people-fill" aria-hidden="true"></span> Logg inn
-            </NavLink>
-        </div>
-
-        <br/><br/>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="createPost">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Nytt innlegg
-            </NavLink>
-        </div>
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="profile">
-                <span class="bi bi-person-fill" aria-hidden="true"></span> Min Profil
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="#" @onclick="Logout">
-                <span class="bi-person-fill-x" aria-hidden="true"></span> Logg ut
-            </NavLink>
-        </div>
+        <!-- Post creation option -->
     </nav>
 </div>
 
-@code
-{
+@code {
+    private ProtectedBrowserStorageResult<string> _tokenResult;
+    private bool isDropdownOpen = false;
+
+    // This method will execute after rendering (and after the prerendering phase)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _tokenResult = await ProtectedLocalStorage.GetAsync<string>("authToken");
+            StateHasChanged(); // Trigger a re-render after setting the token result
+        }
+    }
+
     private async Task Logout()
     {
-        await ProtectedBrowserStorage.DeleteAsync("authToken");
+        await ProtectedLocalStorage.DeleteAsync("authToken");
         Http.DefaultRequestHeaders.Authorization = null; // Clear the Authorization header
         Navigation.NavigateTo("/login");
+    }
+
+    private void ToggleDropdown()
+    {
+        isDropdownOpen = !isDropdownOpen;
     }
 }

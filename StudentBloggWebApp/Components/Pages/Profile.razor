@@ -21,8 +21,6 @@
 else if (_userRegistrationDto != null)
 {
     <div style="width: 100%; max-width: 33%">
-        <NavLink href="/createpost" class="btn btn-primary">Opprett nytt innlegg</NavLink>
-        <br /><br />
         <EditForm Model="_userRegistrationDto" OnValidSubmit="SaveChanges">
             <DataAnnotationsValidator />
             <ValidationSummary />

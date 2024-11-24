@@ -29,7 +29,7 @@ public class PostsController(ILogger<PostsController> logger, IPostService postS
     public async Task<ActionResult<IEnumerable<PostDto>>> GetPosts(
         [FromQuery] PostSearchParams searchParams,
         [FromQuery] int page = 1, 
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = 5)
     {
         if (searchParams.Content is null && searchParams.Title is null)
         {

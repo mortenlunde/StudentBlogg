@@ -17,10 +17,12 @@ public class CommentsController(ILogger<CommentsController> logger, ICommentServ
 
     [AllowAnonymous]
     [HttpGet("{postId:guid}/comments", Name = "GetComment")]
-    public async Task<ActionResult<CommentDto>> GetComment(Guid postId)
+    public async Task<ActionResult<CommentDto>> GetComment(Guid postId,
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 6)
     {
         PostDto? postDto = await _postService.GetByIdAsync(postId);
-        IEnumerable<CommentDto> commentDto = await _commentService.GetPagedAsync(1,10);
+        IEnumerable<CommentDto> commentDto = await _commentService.GetPagedAsync(page,pageSize);
         IEnumerable<CommentDto> result = commentDto.Where(x => x.PostId == postDto!.Id);
         
         return Ok(result);

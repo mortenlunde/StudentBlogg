@@ -1,0 +1,120 @@
+@page "/CreatePost"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using StudentBlogg.Feature.Posts
+@inject HttpClient Http
+@inject ProtectedLocalStorage ProtectedLocalStorage
+
+<h1>Opprett nytt innlegg</h1>
+<hr/><br/>
+
+@if (_isSubmitting)
+{
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Laster...</span>
+    </div>
+}
+else
+{
+    <div style="width: 100%; max-width: 80%;">
+    <EditForm Model="_post" OnValidSubmit="CreateNewPost">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label for="title">Tittel:</label>
+            <InputText id="title" class="form-control" @bind-Value="_post.Title" />
+        </div>
+        <div class="mb-3">
+            <label for="content">Innhold:</label>
+            <InputTextArea  id="content" class="form-control" rows="10" @bind-Value="_post.Content" />
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">Opprett</button>
+    </EditForm>
+    </div>
+}
+
+<Modal @ref="_modal" Title="Innlegg opprettet!">
+    <BodyTemplate>
+        Gå til innlegg
+    </BodyTemplate>
+    <FooterTemplate>
+        <button class="btn btn-secondary" @onclick="OnHideModalClick">Lukk</button>
+    </FooterTemplate>
+</Modal>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <div class="alert alert-success">@_successMessage</div>
+}
+
+@code {
+    private PostRegDto _post = new();
+    private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
+    private bool _isSubmitting;
+    private Modal _modal = default!;
+
+    private async Task OnHideModalClick()
+    {
+        await _modal.HideAsync();
+    }
+
+    private async Task CreateNewPost()
+    {
+        _isSubmitting = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            // Retrieve token from ProtectedLocalStorage
+            var result = await ProtectedLocalStorage.GetAsync<string>("authToken");
+
+            if (!result.Success || string.IsNullOrEmpty(result.Value))
+            {
+                _errorMessage = "Authentication token is missing or invalid.";
+                return;
+            }
+
+            var token = result.Value;
+
+            // Decode the JWT token to extract the UserId
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId" || c.Type == "id");
+
+            if (userIdClaim == null)
+            {
+                _errorMessage = "UserId in the token is missing or not a valid GUID.";
+                return;
+            }
+
+            // Send POST request
+            var response = await Http.PostAsJsonAsync("api/v1/Posts/Post", _post);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _successMessage = "Post created successfully!";
+                await _modal.ShowAsync();
+            }
+            else
+            {
+                var errorResponse = await response.Content.ReadAsStringAsync();
+                _errorMessage = !string.IsNullOrEmpty(errorResponse)
+                    ? $"Failed: {errorResponse}"
+                    : "Failed to create the post.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

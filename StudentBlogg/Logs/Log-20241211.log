@@ -1,0 +1,1 @@
+{"Timestamp":"2024-12-11T15:29:02.9412330+01:00","Level":"Information","MessageTemplate":"Beginning to connect to database","TraceId":"9577ab482f836d20cbba1c32e459c69c","SpanId":"5a8f81fa497785d3","Properties":{"SourceContext":"StudentBlogg.Middleware.DatabaseConnectionMiddleware","RequestId":"0HN8PU0HL4QLU:00000011","RequestPath":"/api/v1/Users","ConnectionId":"0HN8PU0HL4QLU"}}

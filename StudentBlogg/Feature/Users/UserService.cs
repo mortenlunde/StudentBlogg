@@ -148,9 +148,9 @@ private bool IsAdminUser(Guid userId)
             : mapper.MapToDto(userResponse);
     }
 
-    public async Task<User?> AuthenticateUserAsync(string username, string password)
+    public async Task<User?> AuthenticateUserAsync(string email, string password)
     {
-        Expression<Func<User, bool>> expression = user => user.Username == username;
+        Expression<Func<User, bool>> expression = user => user.Email == email;
         User? usr = (await userRepository.FindAsync(expression)).FirstOrDefault();
     
         if (usr is null || !BCrypt.Net.BCrypt.Verify(password, usr.HashedPassword))
